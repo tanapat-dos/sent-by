@@ -272,6 +272,77 @@ button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow
   margin: 0.65rem 0 0.85rem;
 }
 
+.category-dropzone {
+  margin: 0.35rem 0 1rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--radius);
+  border: 1.5px dashed color-mix(in srgb, var(--line) 90%, var(--ink));
+  background: color-mix(in srgb, var(--paper-2) 80%, white);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.category-dropzone.is-dragging {
+  border-color: var(--glow);
+  background: color-mix(in srgb, var(--glow-soft) 55%, white);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--glow) 22%, transparent);
+}
+
+.category-dropzone-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.45rem;
+  font-weight: 550;
+}
+
+.category-drop-chips {
+  margin: 0;
+}
+
+.chip.droppable.drop-ready {
+  border-style: dashed;
+  border-color: color-mix(in srgb, var(--glow) 55%, var(--line));
+}
+
+.chip.droppable.drop-hover {
+  border-style: solid;
+  border-color: transparent;
+  background: var(--glow);
+  color: var(--ink);
+  transform: scale(1.05);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--glow) 35%, transparent);
+}
+
+.card.is-dragging {
+  opacity: 0.45;
+  transform: scale(0.98);
+  cursor: grabbing;
+}
+
+.card {
+  cursor: grab;
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+.toast {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 30;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 0.85rem;
+  padding: 0.55rem 0.95rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 550;
+  box-shadow: 0 12px 24px var(--shadow);
+  animation: fade-up 0.25s ease both;
+}
+
 .chip {
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--paper-2) 88%, white);

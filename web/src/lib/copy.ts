@@ -92,6 +92,11 @@ export type Dictionary = {
   language: string
   langEn: string
   langTh: string
+  dragHint: string
+  dragNeedCategories: string
+  dropOnCategory: string
+  assignedToCategory: (name: string) => string
+  alreadyInCategory: (name: string) => string
 }
 
 const en: Dictionary = {
@@ -203,6 +208,11 @@ const en: Dictionary = {
   language: 'Language',
   langEn: 'EN',
   langTh: 'ไทย',
+  dragHint: 'Drag a clip onto a category to organize it.',
+  dragNeedCategories: 'Create a category first, then drag clips onto it.',
+  dropOnCategory: 'Drop to assign',
+  assignedToCategory: (name) => `Added to ${name}`,
+  alreadyInCategory: (name) => `Already in ${name}`,
 }
 
 const th: Dictionary = {
@@ -314,6 +324,11 @@ const th: Dictionary = {
   language: 'ภาษา',
   langEn: 'EN',
   langTh: 'ไทย',
+  dragHint: 'ลากคลิปไปวางบนหมวดหมู่เพื่อจัดกลุ่ม',
+  dragNeedCategories: 'สร้างหมวดหมู่ก่อน แล้วลากคลิปไปวาง',
+  dropOnCategory: 'วางเพื่อใส่หมวดหมู่',
+  assignedToCategory: (name) => `เพิ่มใน ${name} แล้ว`,
+  alreadyInCategory: (name) => `อยู่ใน ${name} อยู่แล้ว`,
 }
 
 const dictionaries: Record<Lang, Dictionary> = { en, th }

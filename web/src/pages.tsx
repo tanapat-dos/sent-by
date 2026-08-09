@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   createCategory,
   createSender,
@@ -20,18 +20,30 @@ import { useLocale } from './lib/locale'
 import { displayTitle, extractUrls } from './lib/urls'
 import { useDb } from './lib/useDb'
 import { Shell } from './components/Shell'
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react'
 
 const REPLY_PRESETS = ['😂', '❤️', 'That was good']
+const CLIP_MIME = 'application/x-sentby-clip'
 
 export function InboxPage({ doneOnly = false }: { doneOnly?: boolean }) {
   const { t, lang } = useLocale()
+  const navigate = useNavigate()
   const db = useDb()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<InboxFilter>(doneOnly ? 'COMPLETED' : 'ALL')
   const [categoryId, setCategoryId] = useState<string | null>(null)
+  const [draggingClipId, setDraggingClipId] = useState<string | null>(null)
+  const [dropHoverId, setDropHoverId] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const suppressClick = useRef(false)
 
   const effectiveFilter = doneOnly ? 'COMPLETED' : filter
+
+  useEffect(() => {
+    if (!toast) return
+    const id = window.setTimeout(() => setToast(null), 2200)
+    return () => window.clearTimeout(id)
+  }, [toast])
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -41,14 +53,17 @@ export function InboxPage({ doneOnly = false }: { doneOnly?: boolean }) {
         const senderList = shares
           .map((s) => db.senders.find((x) => x.id === s.senderId)?.displayName)
           .filter((n): n is string => Boolean(n))
-        const cats = db.clipCategories
+        const assignedIds = db.clipCategories
           .filter((cc) => cc.clipId === clip.id)
-          .map((cc) => db.categories.find((c) => c.id === cc.categoryId)?.name)
+          .map((cc) => cc.categoryId)
+        const cats = assignedIds
+          .map((id) => db.categories.find((c) => c.id === id)?.name)
           .filter(Boolean)
         return {
           clip,
           shares,
           senderList: [...new Set(senderList)],
+          assignedCategoryIds: new Set(assignedIds),
           categoryNames: cats.join(', '),
           outstanding: outstandingReplyCount(shares),
           completed: isCompleted(clip, shares),
@@ -59,9 +74,7 @@ export function InboxPage({ doneOnly = false }: { doneOnly?: boolean }) {
         if (effectiveFilter === 'WATCHED' && row.clip.watchStatus !== 'WATCHED') return false
         if (effectiveFilter === 'NEEDS_REPLY' && row.outstanding === 0) return false
         if (effectiveFilter === 'COMPLETED' && !row.completed) return false
-        if (categoryId && !db.clipCategories.some((cc) => cc.clipId === row.clip.id && cc.categoryId === categoryId)) {
-          return false
-        }
+        if (categoryId && !row.assignedCategoryIds.has(categoryId)) return false
         if (!q) return true
         const hay = [
           row.clip.title,
@@ -83,6 +96,43 @@ export function InboxPage({ doneOnly = false }: { doneOnly?: boolean }) {
         return b.clip.lastReceivedAt - a.clip.lastReceivedAt
       })
   }, [db, query, effectiveFilter, categoryId])
+
+  function onClipDragStart(e: DragEvent, clipId: string) {
+    e.dataTransfer.setData(CLIP_MIME, clipId)
+    e.dataTransfer.setData('text/plain', clipId)
+    e.dataTransfer.effectAllowed = 'copy'
+    setDraggingClipId(clipId)
+    suppressClick.current = true
+  }
+
+  function onClipDragEnd() {
+    setDraggingClipId(null)
+    setDropHoverId(null)
+    window.setTimeout(() => {
+      suppressClick.current = false
+    }, 50)
+  }
+
+  function onCategoryDragOver(e: DragEvent, id: string) {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setDropHoverId(id)
+  }
+
+  function onCategoryDrop(e: DragEvent, catId: string, catName: string) {
+    e.preventDefault()
+    const clipId = e.dataTransfer.getData(CLIP_MIME) || e.dataTransfer.getData('text/plain')
+    setDropHoverId(null)
+    setDraggingClipId(null)
+    if (!clipId) return
+    const already = db.clipCategories.some((cc) => cc.clipId === clipId && cc.categoryId === catId)
+    if (already) {
+      setToast(t.alreadyInCategory(catName))
+      return
+    }
+    setClipCategory(clipId, catId, true)
+    setToast(t.assignedToCategory(catName))
+  }
 
   return (
     <Shell showHero={!doneOnly}>
@@ -107,22 +157,48 @@ export function InboxPage({ doneOnly = false }: { doneOnly?: boolean }) {
           ))}
         </div>
       )}
-      {db.categories.length > 0 && (
-        <div className="chip-row">
-          <button className={`chip ${!categoryId ? 'active' : ''}`} onClick={() => setCategoryId(null)}>
+
+      <div
+        className={`category-dropzone ${draggingClipId ? 'is-dragging' : ''}`}
+        aria-label={t.categories}
+      >
+        <div className="category-dropzone-label">
+          {db.categories.length === 0 ? t.dragNeedCategories : t.dragHint}
+        </div>
+        <div className="chip-row category-drop-chips">
+          <button
+            type="button"
+            className={`chip ${!categoryId ? 'active' : ''}`}
+            onClick={() => setCategoryId(null)}
+          >
             {t.allCategories}
           </button>
           {db.categories.map((c) => (
             <button
               key={c.id}
-              className={`chip ${categoryId === c.id ? 'active' : ''}`}
+              type="button"
+              className={`chip droppable ${categoryId === c.id ? 'active' : ''} ${
+                dropHoverId === c.id ? 'drop-hover' : ''
+              } ${draggingClipId ? 'drop-ready' : ''}`}
               onClick={() => setCategoryId(categoryId === c.id ? null : c.id)}
+              onDragOver={(e) => onCategoryDragOver(e, c.id)}
+              onDragEnter={(e) => onCategoryDragOver(e, c.id)}
+              onDragLeave={() => setDropHoverId((cur) => (cur === c.id ? null : cur))}
+              onDrop={(e) => onCategoryDrop(e, c.id, c.name)}
             >
-              {c.name}
+              {dropHoverId === c.id && draggingClipId ? t.dropOnCategory : c.name}
             </button>
           ))}
+          {db.categories.length === 0 && (
+            <Link className="chip" to="/categories">
+              {t.newCategory}
+            </Link>
+          )}
         </div>
-      )}
+      </div>
+
+      {toast && <div className="toast">{toast}</div>}
+
       {rows.length === 0 ? (
         <div className="panel empty-state">
           <p className="empty-mark">{doneOnly ? '✓' : '✦'}</p>
@@ -148,15 +224,29 @@ export function InboxPage({ doneOnly = false }: { doneOnly?: boolean }) {
                 ? 'warn'
                 : ''
             return (
-              <Link
+              <div
                 key={row.clip.id}
-                className="card"
-                to={`/clip/${row.clip.id}`}
+                className={`card ${draggingClipId === row.clip.id ? 'is-dragging' : ''}`}
                 style={{ ['--i' as string]: index }}
+                draggable
+                role="link"
+                tabIndex={0}
+                onDragStart={(e) => onClipDragStart(e, row.clip.id)}
+                onDragEnd={onClipDragEnd}
+                onClick={() => {
+                  if (suppressClick.current) return
+                  navigate(`/clip/${row.clip.id}`)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    navigate(`/clip/${row.clip.id}`)
+                  }
+                }}
               >
                 <div className="thumb">
                   {row.clip.thumbnailUrl ? (
-                    <img src={row.clip.thumbnailUrl} alt="" />
+                    <img src={row.clip.thumbnailUrl} alt="" draggable={false} />
                   ) : (
                     row.clip.platform.slice(0, 2)
                   )}
@@ -177,7 +267,7 @@ export function InboxPage({ doneOnly = false }: { doneOnly?: boolean }) {
                   <div className={`status-pill ${pillClass}`}>{line}</div>
                 </div>
                 {row.completed ? <div className="check" title={t.done}>✓</div> : <div />}
-              </Link>
+              </div>
             )
           })}
         </div>
