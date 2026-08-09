@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CheckCircle
@@ -30,6 +31,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,8 +46,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reelshelf.app.data.ClipInboxRow
 import com.reelshelf.app.data.InboxFilter
 import com.reelshelf.app.data.WatchStatus
-import com.reelshelf.app.ui.Copy
+import com.reelshelf.app.ui.AppLanguage
+import com.reelshelf.app.ui.HelpDialog
 import com.reelshelf.app.ui.InboxThumbnail
+import com.reelshelf.app.ui.LocalAppLanguage
+import com.reelshelf.app.ui.LocalUiStrings
+import com.reelshelf.app.ui.LocalePreferences
 import com.reelshelf.app.ui.displayTitle
 import java.text.DateFormat
 import java.util.Date
@@ -52,6 +60,7 @@ import java.util.Date
 @Composable
 fun InboxScreen(
     viewModel: InboxViewModel,
+    localePreferences: LocalePreferences,
     onOpenClip: (String) -> Unit,
     onPaste: () -> Unit,
     onSenders: () -> Unit,
@@ -60,14 +69,20 @@ fun InboxScreen(
     onPrivacy: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val t = LocalUiStrings.current
+    val lang = LocalAppLanguage.current
+    var showHelp by remember { mutableStateOf(false) }
+    if (showHelp) {
+        HelpDialog(onDismiss = { showHelp = false })
+    }
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text(Copy.APP_NAME)
+                        Text(t.appName)
                         Text(
-                            text = Copy.TAGLINE,
+                            text = t.tagline,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -75,18 +90,30 @@ fun InboxScreen(
                 },
                 actions = {
                     IconButton(
+                        onClick = { showHelp = true },
+                        modifier = Modifier.semantics { contentDescription = t.tipHelp },
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = null)
+                    }
+                    IconButton(
                         onClick = { onCatchUp(InboxFilter.UNWATCHED) },
-                        modifier = Modifier.semantics { contentDescription = "Catch up unwatched" },
+                        modifier = Modifier.semantics { contentDescription = t.catchUpUnwatched },
                     ) {
                         Icon(Icons.Default.PlayArrow, contentDescription = null)
                     }
-                    IconButton(onClick = onPaste, modifier = Modifier.semantics { contentDescription = "Paste link" }) {
+                    IconButton(
+                        onClick = onPaste,
+                        modifier = Modifier.semantics { contentDescription = t.tipPaste },
+                    ) {
                         Icon(Icons.Default.Add, contentDescription = null)
                     }
-                    IconButton(onClick = onCategories, modifier = Modifier.semantics { contentDescription = "Categories" }) {
+                    IconButton(onClick = onCategories, modifier = Modifier.semantics { contentDescription = t.allCategories }) {
                         Icon(Icons.Default.Category, contentDescription = null)
                     }
-                    IconButton(onClick = onPrivacy, modifier = Modifier.semantics { contentDescription = "Privacy" }) {
+                    IconButton(
+                        onClick = onPrivacy,
+                        modifier = Modifier.semantics { contentDescription = t.tipPrivacy },
+                    ) {
                         Icon(Icons.Default.Info, contentDescription = null)
                     }
                 },
@@ -110,15 +137,35 @@ fun InboxScreen(
                 onSenders = onSenders,
                 onDone = { viewModel.setFilter(InboxFilter.COMPLETED) },
             )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = { showHelp = true }) {
+                    Text(t.howToUse)
+                }
+                Text(t.language, style = MaterialTheme.typography.labelLarge)
+                FilterChip(
+                    selected = lang == AppLanguage.EN,
+                    onClick = { localePreferences.setLanguage(AppLanguage.EN) },
+                    label = { Text(t.langEn) },
+                )
+                FilterChip(
+                    selected = lang == AppLanguage.TH,
+                    onClick = { localePreferences.setLanguage(AppLanguage.TH) },
+                    label = { Text(t.langTh) },
+                )
+            }
             OutlinedTextField(
                 value = state.query,
                 onValueChange = viewModel::setQuery,
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .semantics { contentDescription = "Search clips" },
+                        .semantics { contentDescription = t.searchPlaceholder },
                 singleLine = true,
-                label = { Text("Search sender, platform, title, URL") },
+                label = { Text(t.searchPlaceholder) },
             )
             if (state.filter != InboxFilter.COMPLETED) {
                 Row(
@@ -126,10 +173,10 @@ fun InboxScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     TextButton(onClick = { onCatchUp(InboxFilter.UNWATCHED) }) {
-                        Text("Catch up unwatched")
+                        Text(t.catchUpUnwatched)
                     }
                     TextButton(onClick = { onCatchUp(InboxFilter.NEEDS_REPLY) }) {
-                        Text("Catch up needs reply")
+                        Text(t.catchUpNeedsReply)
                     }
                 }
                 Row(
@@ -154,9 +201,9 @@ fun InboxScreen(
                                 Text(
                                     text =
                                         when (filter) {
-                                            InboxFilter.UNWATCHED -> "Unwatched"
-                                            InboxFilter.WATCHED -> "Watched"
-                                            InboxFilter.NEEDS_REPLY -> "Needs reply"
+                                            InboxFilter.UNWATCHED -> t.unwatched
+                                            InboxFilter.WATCHED -> t.watched
+                                            InboxFilter.NEEDS_REPLY -> t.needsReply
                                             else -> filter.name
                                         },
                                     maxLines = 1,
@@ -179,7 +226,7 @@ fun InboxScreen(
                     FilterChip(
                         selected = state.categoryId == null,
                         onClick = { viewModel.setCategoryId(null) },
-                        label = { Text("All categories", maxLines = 1, softWrap = false) },
+                        label = { Text(t.allCategories, maxLines = 1, softWrap = false) },
                     )
                     state.categories.forEach { category ->
                         FilterChip(
@@ -197,21 +244,21 @@ fun InboxScreen(
             when {
                 state.clips.isEmpty() && state.query.isNotBlank() -> {
                     Text(
-                        text = "No clips match your search.",
+                        text = t.noMatch,
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(top = 24.dp),
                     )
                 }
                 state.clips.isEmpty() && state.filter == InboxFilter.COMPLETED -> {
                     Text(
-                        text = Copy.ALL_CAUGHT_UP,
+                        text = t.allCaughtUp,
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(top = 24.dp),
                     )
                 }
                 state.clips.isEmpty() -> {
                     Text(
-                        text = Copy.EMPTY_INBOX,
+                        text = t.emptyInbox,
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(top = 24.dp),
                     )
@@ -240,6 +287,7 @@ private fun PrimaryNav(
     onSenders: () -> Unit,
     onDone: () -> Unit,
 ) {
+    val t = LocalUiStrings.current
     Row(
         modifier =
             Modifier
@@ -248,17 +296,35 @@ private fun PrimaryNav(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        NavTabButton("Inbox", selected = current == NavTab.INBOX, onClick = onInbox)
+        NavTabButton(
+            label = t.inbox,
+            tip = t.tipInbox,
+            selected = current == NavTab.INBOX,
+            onClick = onInbox,
+        )
         Text("|", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        NavTabButton("Senders", selected = current == NavTab.SENDERS, onClick = onSenders)
+        NavTabButton(
+            label = t.senders,
+            tip = t.tipSenders,
+            selected = current == NavTab.SENDERS,
+            onClick = onSenders,
+        )
         Text("|", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        NavTabButton("Done", selected = current == NavTab.DONE, onClick = onDone)
+        NavTabButton(
+            label = t.done,
+            tip = t.tipDone,
+            selected = current == NavTab.DONE,
+            onClick = onDone,
+        )
     }
 }
 
 @Composable
-private fun NavTabButton(label: String, selected: Boolean, onClick: () -> Unit) {
-    TextButton(onClick = onClick) {
+private fun NavTabButton(label: String, tip: String, selected: Boolean, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        modifier = Modifier.semantics { contentDescription = "$label. $tip" },
+    ) {
         Text(
             text = label,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
@@ -274,6 +340,7 @@ private fun NavTabButton(label: String, selected: Boolean, onClick: () -> Unit) 
 
 @Composable
 private fun ClipCard(clip: ClipInboxRow, onClick: () -> Unit) {
+    val t = LocalUiStrings.current
     val completed =
         clip.watchStatus == WatchStatus.WATCHED &&
             clip.outstandingReplyCount == 0 &&
@@ -310,7 +377,7 @@ private fun ClipCard(clip: ClipInboxRow, onClick: () -> Unit) {
                 if (completed) {
                     Icon(
                         imageVector = Icons.Filled.CheckCircle,
-                        contentDescription = "Done",
+                        contentDescription = t.done,
                         tint = Color(0xFF2E7D32),
                     )
                 }
@@ -331,7 +398,7 @@ private fun ClipCard(clip: ClipInboxRow, onClick: () -> Unit) {
                     buildString {
                         append(DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(clip.lastReceivedAt)))
                         append(" · ")
-                        append(Copy.sentByCsv(clip.senderNames))
+                        append(t.sentByCsv(clip.senderNames))
                         clip.categoryNames?.takeIf { it.isNotBlank() }?.let {
                             append(" · ")
                             append(it)
@@ -341,7 +408,7 @@ private fun ClipCard(clip: ClipInboxRow, onClick: () -> Unit) {
             )
             Text(
                 text =
-                    Copy.statusLine(
+                    t.statusLine(
                         completed = completed,
                         watched = clip.watchStatus == WatchStatus.WATCHED,
                         outstandingReplies = clip.outstandingReplyCount,

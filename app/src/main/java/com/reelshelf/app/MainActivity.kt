@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -30,8 +31,11 @@ import com.reelshelf.app.sender.SendersScreen
 import com.reelshelf.app.sender.SendersViewModel
 import com.reelshelf.app.share.QuickSaveScreen
 import com.reelshelf.app.share.QuickSaveViewModel
+import com.reelshelf.app.ui.LocalAppLanguage
+import com.reelshelf.app.ui.LocalUiStrings
 import com.reelshelf.app.ui.PrivacyScreen
 import com.reelshelf.app.ui.Routes
+import com.reelshelf.app.ui.UiStrings
 import com.reelshelf.app.ui.theme.ReelShelfTheme
 
 class MainActivity : ComponentActivity() {
@@ -40,8 +44,14 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val container = application.reelShelfContainer
         setContent {
-            ReelShelfTheme {
-                ReelShelfNav(container = container)
+            val lang by container.localePreferences.language.collectAsStateWithLifecycle()
+            CompositionLocalProvider(
+                LocalAppLanguage provides lang,
+                LocalUiStrings provides UiStrings.forLanguage(lang),
+            ) {
+                ReelShelfTheme {
+                    ReelShelfNav(container = container)
+                }
             }
         }
     }
@@ -63,6 +73,7 @@ fun ReelShelfNav(container: com.reelshelf.app.di.AppContainer) {
             }
             InboxScreen(
                 viewModel = vm,
+                localePreferences = container.localePreferences,
                 onOpenClip = { navController.navigate(Routes.clip(it)) },
                 onPaste = { navController.navigate(Routes.PASTE) },
                 onSenders = { navController.navigate(Routes.SENDERS) },

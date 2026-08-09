@@ -10,10 +10,13 @@ import com.reelshelf.app.metadata.MetadataEnrichmentScheduler
 import com.reelshelf.app.metadata.MetadataFetcherRegistry
 import com.reelshelf.app.metadata.UnsupportedMetadataFetcher
 import com.reelshelf.app.metadata.YoutubeOEmbedFetcher
+import com.reelshelf.app.ui.LocalePreferences
 import com.reelshelf.app.urls.Platform
 
 class AppContainer(context: Context) {
     private val appContext = context.applicationContext
+
+    val localePreferences = LocalePreferences(appContext)
 
     val database: ReelShelfDatabase = ReelShelfDatabase.build(appContext)
 

@@ -22,10 +22,11 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrivacyScreen(onBack: () -> Unit) {
+    val t = LocalUiStrings.current
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Privacy & data") },
+                title = { Text(t.privacyTitle) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -44,7 +45,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                "Sent By stores only what you explicitly share into the app.",
+                t.privacyBody1,
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(

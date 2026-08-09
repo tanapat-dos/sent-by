@@ -15,14 +15,8 @@ import {
   setWatchStatus,
 } from './lib/db'
 import { isCompleted, outstandingReplyCount, type InboxFilter, type SourceApp } from './lib/types'
-import {
-  ALL_CAUGHT_UP,
-  COMPLETED_DETAIL,
-  EMPTY_INBOX,
-  savedMessage,
-  sentBy,
-  statusLine,
-} from './lib/copy'
+import { savedMessage, sentBy, statusLine } from './lib/copy'
+import { useLocale } from './lib/locale'
 import { displayTitle, extractUrls } from './lib/urls'
 import { useDb } from './lib/useDb'
 import { Shell } from './components/Shell'
@@ -31,6 +25,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 const REPLY_PRESETS = ['😂', '❤️', 'That was good']
 
 export function InboxPage({ doneOnly = false }: { doneOnly?: boolean }) {
+  const { t, lang } = useLocale()
   const db = useDb()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<InboxFilter>(doneOnly ? 'COMPLETED' : 'ALL')
@@ -91,16 +86,12 @@ export function InboxPage({ doneOnly = false }: { doneOnly?: boolean }) {
 
   return (
     <Shell showHero={!doneOnly}>
-      {doneOnly ? (
-        <p className="muted">Clips you've watched and replied to.</p>
-      ) : (
-        <p className="muted">Web demo — paste links here. Data stays in this browser only.</p>
-      )}
+      <p className="note-line">{doneOnly ? t.doneNote : t.webDemoNote}</p>
       <div className="field">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search sender, platform, title, URL"
+          placeholder={t.searchPlaceholder}
         />
       </div>
       {!doneOnly && (
@@ -111,7 +102,7 @@ export function InboxPage({ doneOnly = false }: { doneOnly?: boolean }) {
               className={`chip ${filter === f ? 'active' : ''}`}
               onClick={() => setFilter(filter === f ? 'ALL' : f)}
             >
-              {f === 'NEEDS_REPLY' ? 'Needs reply' : f[0] + f.slice(1).toLowerCase()}
+              {f === 'UNWATCHED' ? t.unwatched : f === 'WATCHED' ? t.watched : t.needsReply}
             </button>
           ))}
         </div>
@@ -119,7 +110,7 @@ export function InboxPage({ doneOnly = false }: { doneOnly?: boolean }) {
       {db.categories.length > 0 && (
         <div className="chip-row">
           <button className={`chip ${!categoryId ? 'active' : ''}`} onClick={() => setCategoryId(null)}>
-            All categories
+            {t.allCategories}
           </button>
           {db.categories.map((c) => (
             <button
@@ -133,50 +124,70 @@ export function InboxPage({ doneOnly = false }: { doneOnly?: boolean }) {
         </div>
       )}
       {rows.length === 0 ? (
-        <p className="panel">
-          {doneOnly ? (
-            ALL_CAUGHT_UP
-          ) : (
-            <>
-              {EMPTY_INBOX} <Link to="/paste">Paste a link</Link>
-            </>
+        <div className="panel empty-state">
+          <p className="empty-mark">{doneOnly ? '✓' : '✦'}</p>
+          <p>{doneOnly ? t.allCaughtUp : t.emptyInbox}</p>
+          {!doneOnly && (
+            <Link className="btn primary" to="/paste">
+              {t.pasteLink}
+            </Link>
           )}
-        </p>
+        </div>
       ) : (
-        rows.map((row) => (
-          <Link key={row.clip.id} className="card" to={`/clip/${row.clip.id}`}>
-            <div className="thumb">
-              {row.clip.thumbnailUrl ? (
-                <img src={row.clip.thumbnailUrl} alt="" />
-              ) : (
-                row.clip.platform.slice(0, 2)
-              )}
-            </div>
-            <div>
-              <p className="title">
-                {displayTitle(row.clip.title, row.clip.originalUrl, row.clip.canonicalUrl)}
-              </p>
-              <div className="meta">
-                {row.clip.platform.toLowerCase()}
-                {row.clip.creatorName ? ` · ${row.clip.creatorName}` : ''}
-              </div>
-              <div className="meta">
-                {new Date(row.clip.lastReceivedAt).toLocaleString()} · {sentBy(row.senderList)}
-                {row.categoryNames ? ` · ${row.categoryNames}` : ''}
-              </div>
-              <div className={`meta ${row.completed ? 'ok' : ''}`}>
-                {statusLine(row.completed, row.clip.watchStatus === 'WATCHED', row.outstanding)}
-              </div>
-            </div>
-            {row.completed ? <div className="check" title="Done">✓</div> : <div />}
-          </Link>
-        ))
+        <div className="inbox-list">
+          {rows.map((row, index) => {
+            const line = statusLine(
+              row.completed,
+              row.clip.watchStatus === 'WATCHED',
+              row.outstanding,
+              t,
+            )
+            const pillClass = row.completed
+              ? 'ok'
+              : row.outstanding > 0
+                ? 'warn'
+                : ''
+            return (
+              <Link
+                key={row.clip.id}
+                className="card"
+                to={`/clip/${row.clip.id}`}
+                style={{ ['--i' as string]: index }}
+              >
+                <div className="thumb">
+                  {row.clip.thumbnailUrl ? (
+                    <img src={row.clip.thumbnailUrl} alt="" />
+                  ) : (
+                    row.clip.platform.slice(0, 2)
+                  )}
+                </div>
+                <div>
+                  <p className="title">
+                    {displayTitle(row.clip.title, row.clip.originalUrl, row.clip.canonicalUrl)}
+                  </p>
+                  <div className="meta">
+                    {row.clip.platform.toLowerCase()}
+                    {row.clip.creatorName ? ` · ${row.clip.creatorName}` : ''}
+                  </div>
+                  <div className="meta">
+                    {new Date(row.clip.lastReceivedAt).toLocaleString(lang === 'th' ? 'th-TH' : 'en')} ·{' '}
+                    {sentBy(row.senderList, t)}
+                    {row.categoryNames ? ` · ${row.categoryNames}` : ''}
+                  </div>
+                  <div className={`status-pill ${pillClass}`}>{line}</div>
+                </div>
+                {row.completed ? <div className="check" title={t.done}>✓</div> : <div />}
+              </Link>
+            )
+          })}
+        </div>
       )}
     </Shell>
   )
 }
 
 export function PastePage() {
+  const { t } = useLocale()
   const db = useDb()
   const senders = orderedSenders(db)
   const [text, setText] = useState('')
@@ -199,7 +210,7 @@ export function PastePage() {
       let senderName = senders.find((s) => s.id === sid)?.displayName ?? ''
       if (!sid) {
         if (!newSender.trim()) {
-          setMessage('Select or create a sender')
+          setMessage(t.selectSender)
           return
         }
         senderName = newSender.trim()
@@ -209,10 +220,10 @@ export function PastePage() {
       const results = ingest(text, sid, sourceApp)
       const existing = results.filter((r) => r.wasExisting).length
       const created = results.length - existing
-      setMessage(savedMessage(created, existing, senderName || 'sender'))
+      setMessage(savedMessage(created, existing, senderName || 'sender', t))
       setText('')
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'Save failed')
+      setMessage(err instanceof Error ? err.message : t.saveFailed)
     }
   }
 
@@ -220,18 +231,18 @@ export function PastePage() {
   const others = senders.filter((s) => !s.isFavorite)
 
   return (
-    <Shell title="Paste link">
+    <Shell title={t.pasteTitle}>
       <form className="panel stack" onSubmit={onSave}>
         <div className="field">
-          <label>Paste link or text with URLs</label>
+          <label>{t.pasteLabel}</label>
           <textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} />
         </div>
-        <div className="muted">{urlCount} URL(s) detected</div>
+        <div className="muted">{t.urlsDetected(urlCount)}</div>
         <div>
-          <div className="muted">Sender</div>
+          <div className="muted">{t.sender}</div>
           {favorites.length > 0 && (
             <>
-              <div className="muted">Favorites</div>
+              <div className="muted">{t.favorites}</div>
               <div className="chip-row">
                 {favorites.map((s) => (
                   <button
@@ -259,17 +270,17 @@ export function PastePage() {
             ))}
           </div>
           <div className="field">
-            <label>New sender</label>
+            <label>{t.newSender}</label>
             <div className="row">
               <input value={newSender} onChange={(e) => setNewSender(e.target.value)} />
               <button type="button" onClick={onCreateSender} disabled={!newSender.trim()}>
-                Create
+                {t.create}
               </button>
             </div>
           </div>
         </div>
         <div>
-          <div className="muted">Source app</div>
+          <div className="muted">{t.sourceApp}</div>
           <div className="chip-row">
             {(['LINE', 'MESSENGER', 'OTHER'] as SourceApp[]).map((app) => (
               <button
@@ -285,15 +296,16 @@ export function PastePage() {
         </div>
         {message && <p>{message}</p>}
         <button className="primary" disabled={urlCount === 0}>
-          Save
+          {t.save}
         </button>
-        <Link to="/">Back to inbox</Link>
+        <Link to="/">{t.backToInbox}</Link>
       </form>
     </Shell>
   )
 }
 
 export function ClipDetailPage({ clipId }: { clipId: string }) {
+  const { t } = useLocale()
   const db = useDb()
   const clip = db.clips.find((c) => c.id === clipId)
   const shares = db.shares.filter((s) => s.clipId === clipId)
@@ -304,7 +316,9 @@ export function ClipDetailPage({ clipId }: { clipId: string }) {
   if (!clip) {
     return (
       <Shell>
-        <p>Clip not found. <Link to="/">Inbox</Link></p>
+        <p>
+          {t.clipNotFound} <Link to="/">{t.inbox}</Link>
+        </p>
       </Shell>
     )
   }
@@ -317,7 +331,7 @@ export function ClipDetailPage({ clipId }: { clipId: string }) {
   async function copyReply(shareId: string, text: string) {
     await navigator.clipboard.writeText(text)
     setReplyStatus(shareId, 'REPLIED', text)
-    alert('Copied — paste into LINE, Messenger, or another chat app yourself.')
+    alert(t.copiedAlert)
   }
 
   return (
@@ -337,30 +351,32 @@ export function ClipDetailPage({ clipId }: { clipId: string }) {
             {completed ? (
               <div className="row">
                 <span className="check">✓</span>
-                <strong style={{ color: 'var(--ok)' }}>{COMPLETED_DETAIL}</strong>
+                <span className="status-pill ok">{t.completedDetail}</span>
               </div>
             ) : (
-              <div className="meta">{clip.watchStatus.toLowerCase()}</div>
+              <div className="status-pill">
+                {clip.watchStatus === 'WATCHED' ? t.watched : t.unwatched}
+              </div>
             )}
           </div>
         </div>
         <div className="row">
           <button className="primary" onClick={openClip}>
-            Open clip
+            {t.openClip}
           </button>
           <button
             onClick={() =>
               setWatchStatus(clip.id, clip.watchStatus === 'WATCHED' ? 'UNWATCHED' : 'WATCHED')
             }
           >
-            {clip.watchStatus === 'WATCHED' ? 'Watched (tap to undo)' : 'Mark watched'}
+            {clip.watchStatus === 'WATCHED' ? t.watchedUndo : t.markWatched}
           </button>
         </div>
-        <p className="muted">Opening marks it watched. Reply status stays manual.</p>
+        <p className="muted">{t.openMarksWatched}</p>
 
-        <h3>Categories</h3>
+        <h3>{t.categories}</h3>
         {db.categories.length === 0 ? (
-          <p className="muted">No categories yet.</p>
+          <p className="muted">{t.noCategories}</p>
         ) : (
           <div className="chip-row">
             {db.categories.map((c) => (
@@ -375,13 +391,13 @@ export function ClipDetailPage({ clipId }: { clipId: string }) {
           </div>
         )}
 
-        <h3>Senders</h3>
+        <h3>{t.senders}</h3>
         {shares.map((share) => {
           const sender = db.senders.find((s) => s.id === share.senderId)
           return (
             <div key={share.id} className="panel stack">
               <strong>
-                {sender?.displayName ?? 'Unknown'} · {share.sourceApp}
+                {sender?.displayName ?? t.unknown} · {share.sourceApp}
               </strong>
               <div className="chip-row">
                 {(['NEEDS_REPLY', 'REPLIED', 'NO_REPLY_NEEDED'] as const).map((status) => (
@@ -391,10 +407,10 @@ export function ClipDetailPage({ clipId }: { clipId: string }) {
                     onClick={() => setReplyStatus(share.id, status)}
                   >
                     {status === 'NEEDS_REPLY'
-                      ? 'Needs reply'
+                      ? t.needsReply
                       : status === 'NO_REPLY_NEEDED'
-                        ? 'No reply needed'
-                        : 'Replied'}
+                        ? t.noReplyNeeded
+                        : t.replied}
                   </button>
                 ))}
               </div>
@@ -406,7 +422,7 @@ export function ClipDetailPage({ clipId }: { clipId: string }) {
                 ))}
               </div>
               <div className="field">
-                <label>Custom reply</label>
+                <label>{t.customReply}</label>
                 <input
                   value={custom[share.id] ?? share.replyText ?? ''}
                   onChange={(e) => setCustom((m) => ({ ...m, [share.id]: e.target.value }))}
@@ -418,26 +434,27 @@ export function ClipDetailPage({ clipId }: { clipId: string }) {
                   if (text) void copyReply(share.id, text)
                 }}
               >
-                Copy reply
+                {t.copyReply}
               </button>
             </div>
           )
         })}
-        <Link to="/">Back to inbox</Link>
+        <Link to="/">{t.backToInbox}</Link>
       </div>
     </Shell>
   )
 }
 
 export function SendersPage() {
+  const { t } = useLocale()
   const db = useDb()
   const senders = orderedSenders(db)
   const [names, setNames] = useState<Record<string, string>>({})
   const [mergeFrom, setMergeFrom] = useState<string | null>(null)
 
   return (
-    <Shell title="Senders">
-      <p className="muted">Favorites appear first when pasting links. Merge asks for confirmation.</p>
+    <Shell title={t.senders}>
+      <p className="muted">{t.sendersHint}</p>
       {senders.map((sender) => {
         const clips = db.shares
           .filter((s) => s.senderId === sender.id)
@@ -450,7 +467,7 @@ export function SendersPage() {
                 {sender.isFavorite ? '★' : '☆'}
               </button>
               <strong>{sender.displayName}</strong>
-              <span className="muted">{uniqueClips.length} clip(s)</span>
+              <span className="muted">{t.clipsCount(uniqueClips.length)}</span>
             </div>
             <input
               value={names[sender.id] ?? sender.displayName}
@@ -460,7 +477,7 @@ export function SendersPage() {
               <button
                 onClick={() => renameSender(sender.id, names[sender.id] ?? sender.displayName)}
               >
-                Save name
+                {t.saveName}
               </button>
               <button
                 onClick={() => {
@@ -473,40 +490,38 @@ export function SendersPage() {
                     return
                   }
                   const from = getState().senders.find((s) => s.id === mergeFrom)
-                  if (
-                    from &&
-                    confirm(`Merge "${from.displayName}" into "${sender.displayName}"?`)
-                  ) {
+                  if (from && confirm(t.mergeConfirm(from.displayName, sender.displayName))) {
                     mergeSenders(mergeFrom, sender.id)
                   }
                   setMergeFrom(null)
                 }}
               >
                 {!mergeFrom
-                  ? 'Use as merge source'
+                  ? t.mergeSource
                   : mergeFrom === sender.id
-                    ? 'Source selected'
-                    : 'Merge into this sender'}
+                    ? t.sourceSelected
+                    : t.mergeInto}
               </button>
             </div>
           </div>
         )
       })}
-      <Link to="/">Back to inbox</Link>
+      <Link to="/">{t.backToInbox}</Link>
     </Shell>
   )
 }
 
 export function CategoriesPage() {
+  const { t } = useLocale()
   const db = useDb()
   const [name, setName] = useState('')
   const [edits, setEdits] = useState<Record<string, string>>({})
 
   return (
-    <Shell title="Categories">
+    <Shell title={t.categories}>
       <div className="panel stack">
         <div className="field">
-          <label>New category</label>
+          <label>{t.newCategory}</label>
           <div className="row">
             <input value={name} onChange={(e) => setName(e.target.value)} />
             <button
@@ -516,11 +531,11 @@ export function CategoriesPage() {
                   createCategory(name)
                   setName('')
                 } catch (e) {
-                  alert(e instanceof Error ? e.message : 'Failed')
+                  alert(e instanceof Error ? e.message : t.failed)
                 }
               }}
             >
-              Create
+              {t.create}
             </button>
           </div>
         </div>
@@ -531,29 +546,27 @@ export function CategoriesPage() {
               onChange={(e) => setEdits((m) => ({ ...m, [c.id]: e.target.value }))}
             />
             <div className="row">
-              <button onClick={() => renameCategory(c.id, edits[c.id] ?? c.name)}>Rename</button>
-              <button onClick={() => deleteCategory(c.id)}>Delete</button>
+              <button onClick={() => renameCategory(c.id, edits[c.id] ?? c.name)}>{t.rename}</button>
+              <button onClick={() => deleteCategory(c.id)}>{t.delete}</button>
             </div>
           </div>
         ))}
       </div>
-      <Link to="/">Back to inbox</Link>
+      <Link to="/">{t.backToInbox}</Link>
     </Shell>
   )
 }
 
 export function PrivacyPage() {
+  const { t } = useLocale()
   return (
-    <Shell title="Privacy & data">
+    <Shell title={t.privacyTitle}>
       <div className="panel stack">
-        <p>Sent By stores only what you paste into this browser.</p>
-        <p>
-          Locally we may store URLs, sender labels you create, notes/replies, categories, and public
-          preview metadata when available.
-        </p>
-        <p>We do not read LINE or Messenger. There is no cloud sync in this demo.</p>
-        <p>Clearing site data in your browser deletes your inbox.</p>
-        <Link to="/">Back to inbox</Link>
+        <p>{t.privacyP1}</p>
+        <p>{t.privacyP2}</p>
+        <p>{t.privacyP3}</p>
+        <p>{t.privacyP4}</p>
+        <Link to="/">{t.backToInbox}</Link>
       </div>
     </Shell>
   )

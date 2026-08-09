@@ -5,16 +5,21 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-private val LightColors = lightColorScheme(
-    primary = Color(0xFF1B3A4B),
-    secondary = Color(0xFFF4A261),
-    background = Color(0xFFF7F4EF),
-    surface = Color(0xFFF7F4EF),
-    onPrimary = Color.White,
-    onSecondary = Color(0xFF1B3A4B),
-    onBackground = Color(0xFF1B3A4B),
-    onSurface = Color(0xFF1B3A4B),
-)
+private val LightColors =
+    lightColorScheme(
+        primary = Color(0xFF102A36),
+        onPrimary = Color.White,
+        secondary = Color(0xFFFF8A3D),
+        onSecondary = Color(0xFF102A36),
+        tertiary = Color(0xFF5EC8C0),
+        background = Color(0xFFEEF4F6),
+        onBackground = Color(0xFF102A36),
+        surface = Color(0xFFF7FBFC),
+        onSurface = Color(0xFF102A36),
+        surfaceVariant = Color(0xFFDCE8EC),
+        onSurfaceVariant = Color(0xFF5A7380),
+        outline = Color(0xFFC5D5DB),
+    )
 
 @Composable
 fun ReelShelfTheme(content: @Composable () -> Unit) {

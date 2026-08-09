@@ -1,6 +1,7 @@
 import { Link, NavLink } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { APP_NAME, BLURB, TAGLINE } from '../lib/copy'
+import { HelpGuide, TipHint } from './HelpGuide'
+import { useLocale } from '../lib/locale'
 
 export function Shell({
   title,
@@ -11,43 +12,75 @@ export function Shell({
   showHero?: boolean
   children: ReactNode
 }) {
+  const { t, lang, setLang } = useLocale()
+
   return (
     <div className="app-shell">
+      {showHero && (
+        <div className="atmosphere" aria-hidden>
+          <span className="reel" />
+          <span className="reel" />
+          <span className="reel" />
+        </div>
+      )}
       <header className="topbar">
-        <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>
-          <h1 className="brand">{APP_NAME}</h1>
-          <p className="tagline">{TAGLINE}</p>
+        <Link to="/" className="brand-block">
+          <h1 className="brand">{t.appName}</h1>
+          <p className="tagline">{t.tagline}</p>
         </Link>
         <nav className="primary-nav" aria-label="Main">
-          <NavLink className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} to="/" end>
-            Inbox
-          </NavLink>
-          <span className="nav-sep" aria-hidden>
-            |
-          </span>
-          <NavLink className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} to="/senders">
-            Senders
-          </NavLink>
-          <span className="nav-sep" aria-hidden>
-            |
-          </span>
-          <NavLink className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} to="/done">
-            Done
-          </NavLink>
+          <TipHint tip={t.navTips.inbox}>
+            <NavLink className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} to="/" end>
+              {t.inbox}
+            </NavLink>
+          </TipHint>
+          <TipHint tip={t.navTips.senders}>
+            <NavLink className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} to="/senders">
+              {t.senders}
+            </NavLink>
+          </TipHint>
+          <TipHint tip={t.navTips.done}>
+            <NavLink className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`} to="/done">
+              {t.done}
+            </NavLink>
+          </TipHint>
         </nav>
       </header>
-      {showHero && <p className="hero-blurb">{BLURB}</p>}
-      {title && title !== APP_NAME ? <h2 className="page-title">{title}</h2> : null}
+      {showHero && <p className="hero-blurb">{t.blurb}</p>}
+      {title && title !== t.appName ? <h2 className="page-title">{title}</h2> : null}
       <div className="nav-actions">
-        <NavLink className="btn" to="/paste">
-          Paste link
-        </NavLink>
-        <NavLink className="btn" to="/categories">
-          Categories
-        </NavLink>
-        <NavLink className="btn" to="/privacy">
-          Privacy
-        </NavLink>
+        <TipHint tip={t.navTips.paste}>
+          <NavLink className="btn primary" to="/paste">
+            {t.pasteLink}
+          </NavLink>
+        </TipHint>
+        <HelpGuide autoOpenOnce={showHero} />
+        <TipHint tip={t.navTips.categories}>
+          <NavLink className="btn" to="/categories">
+            {t.categories}
+          </NavLink>
+        </TipHint>
+        <TipHint tip={t.navTips.privacy}>
+          <NavLink className="btn" to="/privacy">
+            {t.privacy}
+          </NavLink>
+        </TipHint>
+        <div className="lang-switch" role="group" aria-label={t.language}>
+          <button
+            type="button"
+            className={`chip ${lang === 'en' ? 'active' : ''}`}
+            onClick={() => setLang('en')}
+          >
+            {t.langEn}
+          </button>
+          <button
+            type="button"
+            className={`chip ${lang === 'th' ? 'active' : ''}`}
+            onClick={() => setLang('th')}
+          >
+            {t.langTh}
+          </button>
+        </div>
       </div>
       {children}
     </div>
