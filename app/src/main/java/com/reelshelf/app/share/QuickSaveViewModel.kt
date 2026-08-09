@@ -138,13 +138,16 @@ class QuickSaveViewModel(
                 is IngestOutcome.Saved -> {
                     val existing = outcome.results.count { it.wasExistingClip }
                     val created = outcome.results.size - existing
+                    val senderName =
+                        state.recentSenders.find { it.id == senderId }?.displayName
+                            ?: state.newSenderName.trim().ifBlank { "sender" }
                     message.value =
                         when {
                             existing > 0 && created == 0 ->
-                                "Already saved — added sender to ${existing} clip(s)."
+                                com.reelshelf.app.ui.Copy.alreadySavedAddedSender(senderName)
                             existing > 0 ->
-                                "Saved $created new, updated $existing existing."
-                            else -> "Saved ${outcome.results.size} clip(s)."
+                                com.reelshelf.app.ui.Copy.savedNewAndExisting(created, existing)
+                            else -> com.reelshelf.app.ui.Copy.savedClips(outcome.results.size)
                         }
                     done.value = true
                 }

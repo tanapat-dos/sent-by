@@ -30,10 +30,11 @@ a { color: inherit; }
 
 .topbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .brand {
@@ -44,10 +45,55 @@ a { color: inherit; }
   margin: 0;
 }
 
+.tagline {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.hero-blurb {
+  max-width: 36rem;
+  margin: 0 0 1rem;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.page-title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.35rem;
+  margin: 0.5rem 0 0.75rem;
+  font-weight: 650;
+}
+
+.primary-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  font-size: 1rem;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: var(--muted);
+  font-weight: 500;
+  padding: 0.2rem 0.15rem;
+}
+
+.nav-link.active {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.nav-sep {
+  color: var(--line);
+}
+
 .nav-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  margin-bottom: 1rem;
 }
 
 button, .btn {

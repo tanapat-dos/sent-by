@@ -1,6 +1,10 @@
-# ReelShelf
+# Sent By
 
-Shared Clips Inbox — Android local MVP (`com.reelshelf.app`).
+Watch once. Reply to everyone.
+
+All the clips your friends send you, organized into one catch-up inbox.
+
+Android local MVP (`com.reelshelf.app`) plus a browser demo in [`web/`](web/).
 
 ## Requirements
 
@@ -42,10 +46,11 @@ Deploy: set Netlify base directory to `web`, build `npm run build`, publish `dis
 
 ## What works in the MVP
 
-- Share `text/plain` from other apps into ReelShelf (quick save + sender)
+- Share `text/plain` from other apps into Sent By (quick save + sender)
 - Paste links in-app
 - Canonical URL dedupe with per-sender share records
-- Inbox filters: Unwatched / Watched / Needs reply / Completed
+- Navigation: Inbox · Senders · Done
+- Inbox filters: Unwatched / Watched / Needs reply
 - Search by sender, platform, title, URL
 - Watch toggle (auto on open) and per-sender reply tracking
 - Reply presets / recent customs → clipboard + always choose chat app
@@ -58,13 +63,5 @@ Deploy: set Netlify base directory to `web`, build `npm run build`, publish `dis
 ## Known limitations
 
 - LINE/Messenger payload behavior still needs device confirmation (`docs/FEASIBILITY.md`)
-- Live preview metadata is intentionally disabled until platforms are allow-listed; clips save with URL-only fallback
-- Reply shortcuts do not deep-link into the original chat
-- No cloud sync, iOS, or AI features
-- 10k-clip scroll performance should be validated on a real device
-
-## Docs
-
-- Product requirements: `REQUIREMENTS.md`
-- Task tracker: `TASKS.md`
-- Feasibility notes: `docs/FEASIBILITY.md`
+- True “watched the video” detection is not possible; open marks watched
+- No cloud sync / accounts in this MVP

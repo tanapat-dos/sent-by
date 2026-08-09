@@ -15,6 +15,14 @@ import {
   setWatchStatus,
 } from './lib/db'
 import { isCompleted, outstandingReplyCount, type InboxFilter, type SourceApp } from './lib/types'
+import {
+  ALL_CAUGHT_UP,
+  COMPLETED_DETAIL,
+  EMPTY_INBOX,
+  savedMessage,
+  sentBy,
+  statusLine,
+} from './lib/copy'
 import { displayTitle, extractUrls } from './lib/urls'
 import { useDb } from './lib/useDb'
 import { Shell } from './components/Shell'
@@ -22,20 +30,22 @@ import { useMemo, useState, type FormEvent } from 'react'
 
 const REPLY_PRESETS = ['😂', '❤️', 'That was good']
 
-export function InboxPage() {
+export function InboxPage({ doneOnly = false }: { doneOnly?: boolean }) {
   const db = useDb()
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<InboxFilter>('ALL')
+  const [filter, setFilter] = useState<InboxFilter>(doneOnly ? 'COMPLETED' : 'ALL')
   const [categoryId, setCategoryId] = useState<string | null>(null)
+
+  const effectiveFilter = doneOnly ? 'COMPLETED' : filter
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
     return [...db.clips]
       .map((clip) => {
         const shares = db.shares.filter((s) => s.clipId === clip.id)
-        const senders = shares
+        const senderList = shares
           .map((s) => db.senders.find((x) => x.id === s.senderId)?.displayName)
-          .filter(Boolean)
+          .filter((n): n is string => Boolean(n))
         const cats = db.clipCategories
           .filter((cc) => cc.clipId === clip.id)
           .map((cc) => db.categories.find((c) => c.id === cc.categoryId)?.name)
@@ -43,17 +53,17 @@ export function InboxPage() {
         return {
           clip,
           shares,
-          senderNames: [...new Set(senders)].join(', '),
+          senderList: [...new Set(senderList)],
           categoryNames: cats.join(', '),
           outstanding: outstandingReplyCount(shares),
           completed: isCompleted(clip, shares),
         }
       })
       .filter((row) => {
-        if (filter === 'UNWATCHED' && row.clip.watchStatus !== 'UNWATCHED') return false
-        if (filter === 'WATCHED' && row.clip.watchStatus !== 'WATCHED') return false
-        if (filter === 'NEEDS_REPLY' && row.outstanding === 0) return false
-        if (filter === 'COMPLETED' && !row.completed) return false
+        if (effectiveFilter === 'UNWATCHED' && row.clip.watchStatus !== 'UNWATCHED') return false
+        if (effectiveFilter === 'WATCHED' && row.clip.watchStatus !== 'WATCHED') return false
+        if (effectiveFilter === 'NEEDS_REPLY' && row.outstanding === 0) return false
+        if (effectiveFilter === 'COMPLETED' && !row.completed) return false
         if (categoryId && !db.clipCategories.some((cc) => cc.clipId === row.clip.id && cc.categoryId === categoryId)) {
           return false
         }
@@ -64,7 +74,7 @@ export function InboxPage() {
           row.clip.originalUrl,
           row.clip.canonicalUrl,
           row.clip.platform,
-          row.senderNames,
+          row.senderList.join(' '),
           row.categoryNames,
         ]
           .join(' ')
@@ -77,13 +87,15 @@ export function InboxPage() {
         if (aw !== bw) return aw - bw
         return b.clip.lastReceivedAt - a.clip.lastReceivedAt
       })
-  }, [db, query, filter, categoryId])
+  }, [db, query, effectiveFilter, categoryId])
 
   return (
-    <Shell>
-      <p className="muted">
-        Web demo — paste links here. Data stays in this browser only (no Play share sheet).
-      </p>
+    <Shell showHero={!doneOnly}>
+      {doneOnly ? (
+        <p className="muted">Clips you've watched and replied to.</p>
+      ) : (
+        <p className="muted">Web demo — paste links here. Data stays in this browser only.</p>
+      )}
       <div className="field">
         <input
           value={query}
@@ -91,17 +103,19 @@ export function InboxPage() {
           placeholder="Search sender, platform, title, URL"
         />
       </div>
-      <div className="chip-row">
-        {(['UNWATCHED', 'WATCHED', 'NEEDS_REPLY', 'COMPLETED'] as InboxFilter[]).map((f) => (
-          <button
-            key={f}
-            className={`chip ${filter === f ? 'active' : ''}`}
-            onClick={() => setFilter(filter === f ? 'ALL' : f)}
-          >
-            {f === 'NEEDS_REPLY' ? 'Needs reply' : f[0] + f.slice(1).toLowerCase()}
-          </button>
-        ))}
-      </div>
+      {!doneOnly && (
+        <div className="chip-row">
+          {(['UNWATCHED', 'WATCHED', 'NEEDS_REPLY'] as InboxFilter[]).map((f) => (
+            <button
+              key={f}
+              className={`chip ${filter === f ? 'active' : ''}`}
+              onClick={() => setFilter(filter === f ? 'ALL' : f)}
+            >
+              {f === 'NEEDS_REPLY' ? 'Needs reply' : f[0] + f.slice(1).toLowerCase()}
+            </button>
+          ))}
+        </div>
+      )}
       {db.categories.length > 0 && (
         <div className="chip-row">
           <button className={`chip ${!categoryId ? 'active' : ''}`} onClick={() => setCategoryId(null)}>
@@ -119,7 +133,15 @@ export function InboxPage() {
         </div>
       )}
       {rows.length === 0 ? (
-        <p className="panel">Inbox is empty. <Link to="/paste">Paste a link</Link> to start.</p>
+        <p className="panel">
+          {doneOnly ? (
+            ALL_CAUGHT_UP
+          ) : (
+            <>
+              {EMPTY_INBOX} <Link to="/paste">Paste a link</Link>
+            </>
+          )}
+        </p>
       ) : (
         rows.map((row) => (
           <Link key={row.clip.id} className="card" to={`/clip/${row.clip.id}`}>
@@ -139,22 +161,14 @@ export function InboxPage() {
                 {row.clip.creatorName ? ` · ${row.clip.creatorName}` : ''}
               </div>
               <div className="meta">
-                {new Date(row.clip.lastReceivedAt).toLocaleString()} · {row.senderNames || 'No senders'}
+                {new Date(row.clip.lastReceivedAt).toLocaleString()} · {sentBy(row.senderList)}
                 {row.categoryNames ? ` · ${row.categoryNames}` : ''}
               </div>
               <div className={`meta ${row.completed ? 'ok' : ''}`}>
-                {row.completed
-                  ? 'Completed'
-                  : row.clip.watchStatus === 'WATCHED'
-                    ? row.outstanding
-                      ? `Watched · ${row.outstanding} need reply`
-                      : 'Watched'
-                    : row.outstanding
-                      ? `Unwatched · ${row.outstanding} need reply`
-                      : 'Unwatched'}
+                {statusLine(row.completed, row.clip.watchStatus === 'WATCHED', row.outstanding)}
               </div>
             </div>
-            {row.completed ? <div className="check" title="Completed">✓</div> : <div />}
+            {row.completed ? <div className="check" title="Done">✓</div> : <div />}
           </Link>
         ))
       )}
@@ -182,24 +196,20 @@ export function PastePage() {
     e.preventDefault()
     try {
       let sid = senderId
+      let senderName = senders.find((s) => s.id === sid)?.displayName ?? ''
       if (!sid) {
         if (!newSender.trim()) {
           setMessage('Select or create a sender')
           return
         }
+        senderName = newSender.trim()
         sid = createSender(newSender).id
         setNewSender('')
       }
       const results = ingest(text, sid, sourceApp)
       const existing = results.filter((r) => r.wasExisting).length
       const created = results.length - existing
-      setMessage(
-        existing && !created
-          ? `Already saved — added sender to ${existing} clip(s).`
-          : existing
-            ? `Saved ${created} new, updated ${existing} existing.`
-            : `Saved ${results.length} clip(s).`,
-      )
+      setMessage(savedMessage(created, existing, senderName || 'sender'))
       setText('')
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'Save failed')
@@ -327,7 +337,7 @@ export function ClipDetailPage({ clipId }: { clipId: string }) {
             {completed ? (
               <div className="row">
                 <span className="check">✓</span>
-                <strong style={{ color: 'var(--ok)' }}>Completed — watched and all replies handled</strong>
+                <strong style={{ color: 'var(--ok)' }}>{COMPLETED_DETAIL}</strong>
               </div>
             ) : (
               <div className="meta">{clip.watchStatus.toLowerCase()}</div>
@@ -536,7 +546,7 @@ export function PrivacyPage() {
   return (
     <Shell title="Privacy & data">
       <div className="panel stack">
-        <p>ReelShelf Web stores only what you paste into this browser.</p>
+        <p>Sent By stores only what you paste into this browser.</p>
         <p>
           Locally we may store URLs, sender labels you create, notes/replies, categories, and public
           preview metadata when available.

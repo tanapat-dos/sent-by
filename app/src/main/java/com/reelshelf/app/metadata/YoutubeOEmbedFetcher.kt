@@ -21,7 +21,7 @@ class UrlSimpleHttpGet : SimpleHttpGet {
                 connectTimeout = 8_000
                 readTimeout = 8_000
                 requestMethod = "GET"
-                setRequestProperty("User-Agent", "ReelShelf/0.2")
+                setRequestProperty("User-Agent", "SentBy/0.2")
             }
         return try {
             val code = connection.responseCode

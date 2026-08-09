@@ -17,7 +17,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -36,12 +35,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.reelshelf.app.data.ClipInboxRow
 import com.reelshelf.app.data.InboxFilter
 import com.reelshelf.app.data.WatchStatus
+import com.reelshelf.app.ui.Copy
 import com.reelshelf.app.ui.InboxThumbnail
 import com.reelshelf.app.ui.displayTitle
 import java.text.DateFormat
@@ -62,7 +63,16 @@ fun InboxScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("ReelShelf") },
+                title = {
+                    Column {
+                        Text(Copy.APP_NAME)
+                        Text(
+                            text = Copy.TAGLINE,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                },
                 actions = {
                     IconButton(
                         onClick = { onCatchUp(InboxFilter.UNWATCHED) },
@@ -75,9 +85,6 @@ fun InboxScreen(
                     }
                     IconButton(onClick = onCategories, modifier = Modifier.semantics { contentDescription = "Categories" }) {
                         Icon(Icons.Default.Category, contentDescription = null)
-                    }
-                    IconButton(onClick = onSenders, modifier = Modifier.semantics { contentDescription = "Senders" }) {
-                        Icon(Icons.Default.People, contentDescription = null)
                     }
                     IconButton(onClick = onPrivacy, modifier = Modifier.semantics { contentDescription = "Privacy" }) {
                         Icon(Icons.Default.Info, contentDescription = null)
@@ -93,6 +100,16 @@ fun InboxScreen(
                     .padding(padding)
                     .padding(horizontal = 16.dp),
         ) {
+            PrimaryNav(
+                current =
+                    when (state.filter) {
+                        InboxFilter.COMPLETED -> NavTab.DONE
+                        else -> NavTab.INBOX
+                    },
+                onInbox = { viewModel.setFilter(InboxFilter.ALL) },
+                onSenders = onSenders,
+                onDone = { viewModel.setFilter(InboxFilter.COMPLETED) },
+            )
             OutlinedTextField(
                 value = state.query,
                 onValueChange = viewModel::setQuery,
@@ -103,47 +120,51 @@ fun InboxScreen(
                 singleLine = true,
                 label = { Text("Search sender, platform, title, URL") },
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                TextButton(onClick = { onCatchUp(InboxFilter.UNWATCHED) }) {
-                    Text("Catch up unwatched")
+            if (state.filter != InboxFilter.COMPLETED) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TextButton(onClick = { onCatchUp(InboxFilter.UNWATCHED) }) {
+                        Text("Catch up unwatched")
+                    }
+                    TextButton(onClick = { onCatchUp(InboxFilter.NEEDS_REPLY) }) {
+                        Text("Catch up needs reply")
+                    }
                 }
-                TextButton(onClick = { onCatchUp(InboxFilter.NEEDS_REPLY) }) {
-                    Text("Catch up needs reply")
-                }
-            }
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                InboxFilter.entries.forEach { filter ->
-                    if (filter == InboxFilter.ALL) return@forEach
-                    FilterChip(
-                        selected = state.filter == filter,
-                        onClick = {
-                            viewModel.setFilter(if (state.filter == filter) InboxFilter.ALL else filter)
-                        },
-                        label = {
-                            Text(
-                                text =
-                                    when (filter) {
-                                        InboxFilter.UNWATCHED -> "Unwatched"
-                                        InboxFilter.WATCHED -> "Watched"
-                                        InboxFilter.NEEDS_REPLY -> "Needs reply"
-                                        InboxFilter.COMPLETED -> "Completed"
-                                        InboxFilter.ALL -> "All"
-                                    },
-                                maxLines = 1,
-                                softWrap = false,
-                            )
-                        },
-                    )
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState())
+                            .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf(
+                        InboxFilter.UNWATCHED,
+                        InboxFilter.WATCHED,
+                        InboxFilter.NEEDS_REPLY,
+                    ).forEach { filter ->
+                        FilterChip(
+                            selected = state.filter == filter,
+                            onClick = {
+                                viewModel.setFilter(if (state.filter == filter) InboxFilter.ALL else filter)
+                            },
+                            label = {
+                                Text(
+                                    text =
+                                        when (filter) {
+                                            InboxFilter.UNWATCHED -> "Unwatched"
+                                            InboxFilter.WATCHED -> "Watched"
+                                            InboxFilter.NEEDS_REPLY -> "Needs reply"
+                                            else -> filter.name
+                                        },
+                                    maxLines = 1,
+                                    softWrap = false,
+                                )
+                            },
+                        )
+                    }
                 }
             }
             if (state.categories.isNotEmpty()) {
@@ -181,9 +202,16 @@ fun InboxScreen(
                         modifier = Modifier.padding(top = 24.dp),
                     )
                 }
+                state.clips.isEmpty() && state.filter == InboxFilter.COMPLETED -> {
+                    Text(
+                        text = Copy.ALL_CAUGHT_UP,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(top = 24.dp),
+                    )
+                }
                 state.clips.isEmpty() -> {
                     Text(
-                        text = "Your catch-up inbox is empty. Share a clip from LINE or Messenger, or paste a link.",
+                        text = Copy.EMPTY_INBOX,
                         style = MaterialTheme.typography.bodyLarge,
                         modifier = Modifier.padding(top = 24.dp),
                     )
@@ -203,6 +231,47 @@ fun InboxScreen(
     }
 }
 
+private enum class NavTab { INBOX, SENDERS, DONE }
+
+@Composable
+private fun PrimaryNav(
+    current: NavTab,
+    onInbox: () -> Unit,
+    onSenders: () -> Unit,
+    onDone: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        NavTabButton("Inbox", selected = current == NavTab.INBOX, onClick = onInbox)
+        Text("|", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        NavTabButton("Senders", selected = current == NavTab.SENDERS, onClick = onSenders)
+        Text("|", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        NavTabButton("Done", selected = current == NavTab.DONE, onClick = onDone)
+    }
+}
+
+@Composable
+private fun NavTabButton(label: String, selected: Boolean, onClick: () -> Unit) {
+    TextButton(onClick = onClick) {
+        Text(
+            text = label,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color =
+                if (selected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+        )
+    }
+}
+
 @Composable
 private fun ClipCard(clip: ClipInboxRow, onClick: () -> Unit) {
     val completed =
@@ -218,7 +287,7 @@ private fun ClipCard(clip: ClipInboxRow, onClick: () -> Unit) {
                     contentDescription =
                         buildString {
                             append("Clip ${displayTitle(clip.title, clip.originalUrl, clip.canonicalUrl)}")
-                            if (completed) append(", completed")
+                            if (completed) append(", done")
                         }
                 }
                 .padding(vertical = 4.dp),
@@ -241,7 +310,7 @@ private fun ClipCard(clip: ClipInboxRow, onClick: () -> Unit) {
                 if (completed) {
                     Icon(
                         imageVector = Icons.Filled.CheckCircle,
-                        contentDescription = "Completed",
+                        contentDescription = "Done",
                         tint = Color(0xFF2E7D32),
                     )
                 }
@@ -262,7 +331,7 @@ private fun ClipCard(clip: ClipInboxRow, onClick: () -> Unit) {
                     buildString {
                         append(DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(clip.lastReceivedAt)))
                         append(" · ")
-                        append(clip.senderNames ?: "${clip.senderCount} senders")
+                        append(Copy.sentByCsv(clip.senderNames))
                         clip.categoryNames?.takeIf { it.isNotBlank() }?.let {
                             append(" · ")
                             append(it)
@@ -272,15 +341,11 @@ private fun ClipCard(clip: ClipInboxRow, onClick: () -> Unit) {
             )
             Text(
                 text =
-                    when {
-                        completed -> "Completed"
-                        clip.watchStatus == WatchStatus.WATCHED && clip.outstandingReplyCount > 0 ->
-                            "Watched · ${clip.outstandingReplyCount} need reply"
-                        clip.watchStatus == WatchStatus.WATCHED -> "Watched"
-                        clip.outstandingReplyCount > 0 ->
-                            "Unwatched · ${clip.outstandingReplyCount} need reply"
-                        else -> "Unwatched"
-                    },
+                    Copy.statusLine(
+                        completed = completed,
+                        watched = clip.watchStatus == WatchStatus.WATCHED,
+                        outstandingReplies = clip.outstandingReplyCount,
+                    ),
                 style = MaterialTheme.typography.labelLarge,
                 color = if (completed) Color(0xFF2E7D32) else MaterialTheme.colorScheme.onSurface,
             )

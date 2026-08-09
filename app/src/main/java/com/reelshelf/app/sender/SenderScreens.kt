@@ -45,6 +45,7 @@ fun SendersScreen(
     viewModel: SendersViewModel,
     onBack: () -> Unit,
     onOpenSender: (String) -> Unit,
+    onDone: () -> Unit = {},
 ) {
     val senders by viewModel.senders.collectAsStateWithLifecycle()
     var mergeFromId by remember { mutableStateOf<String?>(null) }
@@ -85,7 +86,7 @@ fun SendersScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Senders") },
+                title = { Text(com.reelshelf.app.ui.Copy.APP_NAME) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -99,6 +100,17 @@ fun SendersScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = onBack) { Text("Inbox") }
+                    Text("|")
+                    TextButton(onClick = {}) { Text("Senders") }
+                    Text("|")
+                    TextButton(onClick = onDone) { Text("Done") }
+                }
                 Text(
                     "Favorites appear first in quick save. To merge: choose source, then target.",
                     style = MaterialTheme.typography.bodySmall,

@@ -44,7 +44,7 @@ fun PrivacyScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                "ReelShelf stores only what you explicitly share into the app.",
+                "Sent By stores only what you explicitly share into the app.",
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(

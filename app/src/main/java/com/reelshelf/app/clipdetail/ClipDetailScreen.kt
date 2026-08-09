@@ -103,11 +103,11 @@ fun ClipDetailScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.CheckCircle,
-                        contentDescription = "Completed",
+                        contentDescription = "Done",
                         tint = Color(0xFF2E7D32),
                     )
                     Text(
-                        text = "Completed — watched and all replies handled",
+                        text = com.reelshelf.app.ui.Copy.COMPLETED_DETAIL,
                         style = MaterialTheme.typography.labelLarge,
                         color = Color(0xFF2E7D32),
                     )

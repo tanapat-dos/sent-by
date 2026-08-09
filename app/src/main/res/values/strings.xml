@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">ReelShelf</string>
-    <string name="share_target_label">ReelShelf</string>
+    <string name="app_name">Sent By</string>
+    <string name="share_target_label">Sent By</string>
+    <string name="tagline">Watch once. Reply to everyone.</string>
 </resources>

@@ -5,6 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -48,8 +51,16 @@ class MainActivity : ComponentActivity() {
 fun ReelShelfNav(container: com.reelshelf.app.di.AppContainer) {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = Routes.INBOX) {
-        composable(Routes.INBOX) {
+        composable(Routes.INBOX) { entry ->
             val vm: InboxViewModel = viewModel(factory = InboxViewModel.factory(container))
+            val pendingFilter by entry.savedStateHandle.getStateFlow("inboxFilter", "")
+                .collectAsStateWithLifecycle()
+            LaunchedEffect(pendingFilter) {
+                if (pendingFilter.isNotBlank()) {
+                    runCatching { InboxFilter.valueOf(pendingFilter) }.getOrNull()?.let(vm::setFilter)
+                    entry.savedStateHandle["inboxFilter"] = ""
+                }
+            }
             InboxScreen(
                 viewModel = vm,
                 onOpenClip = { navController.navigate(Routes.clip(it)) },
@@ -87,6 +98,11 @@ fun ReelShelfNav(container: com.reelshelf.app.di.AppContainer) {
                 viewModel = vm,
                 onBack = { navController.popBackStack() },
                 onOpenSender = { navController.navigate(Routes.sender(it)) },
+                onDone = {
+                    navController.getBackStackEntry(Routes.INBOX).savedStateHandle["inboxFilter"] =
+                        InboxFilter.COMPLETED.name
+                    navController.popBackStack(Routes.INBOX, inclusive = false)
+                },
             )
         }
         composable(Routes.CATEGORIES) {

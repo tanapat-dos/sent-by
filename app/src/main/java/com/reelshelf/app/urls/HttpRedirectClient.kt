@@ -104,6 +104,6 @@ class HttpRedirectClient : RedirectClient {
     }
 
     companion object {
-        private const val USER_AGENT = "ReelShelf/0.1 (+phase0-feasibility; mailto:dev@reelshelf.local)"
+        private const val USER_AGENT = "SentBy/0.1 (+phase0-feasibility; mailto:dev@sentby.local)"
     }
 }

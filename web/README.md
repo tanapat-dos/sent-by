@@ -1,6 +1,8 @@
-# ReelShelf Web (Netlify demo)
+# Sent By Web (Netlify demo)
 
-Browser demo of Shared Clips Inbox. Data stays in **localStorage** on each visitor’s device.
+Browser demo of Sent By. Data stays in **localStorage** on each visitor’s device.
+
+Watch once. Reply to everyone.
 
 ## Limits vs Android app
 

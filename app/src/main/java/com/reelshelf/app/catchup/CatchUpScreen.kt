@@ -78,7 +78,12 @@ fun CatchUpScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Text(
-                    text = if (state.queue.isEmpty()) "No clips need catch-up right now." else "You're caught up.",
+                    text =
+                        if (state.queue.isEmpty()) {
+                            "No clips need catch-up right now."
+                        } else {
+                            com.reelshelf.app.ui.Copy.ALL_CAUGHT_UP
+                        },
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Button(onClick = onBack) { Text("Back to inbox") }

@@ -20,6 +20,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<InboxPage />} />
+        <Route path="/done" element={<InboxPage doneOnly />} />
         <Route path="/paste" element={<PastePage />} />
         <Route path="/clip/:clipId" element={<ClipRoute />} />
         <Route path="/senders" element={<SendersPage />} />
